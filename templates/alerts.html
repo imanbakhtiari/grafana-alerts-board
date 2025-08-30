@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>DC Alerts — Unified View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='Artboard-1_1.svg') }}" type="image/svg+xml">
+
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#12172a; --muted:#9aa3b2;
+      --ok-bg:#0d3d23; --ok-bdr:#1e7a4d;
+      --wr-bg:#5a4300; --wr-bdr:#9f7c00;
+      --cr-bg:#4a0f14; --cr-bdr:#b4232a;
+      --supple:#6f42c1; --supp-bg: rgba(111,66,193,.16); --supp-bdr:#b98cff;
+    }
+
+    body{background:var(--bg);color:#e8edf5;}
+    .navbar{background:#0f152b;border-bottom:1px solid #1b2240;}
+    .muted{color:var(--muted)!important;}
+    .linkish{color:#60aaff;text-decoration:none;} .linkish:hover{text-decoration:underline;}
+
+    .brand-nav{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.5rem; padding-inline:.75rem; }
+    .brand-logo{ height:64px; width:auto; display:block; filter:drop-shadow(0 0 2px rgba(0,0,0,.35)); }
+    .brand-left{ justify-self:start; display:flex; align-items:center; gap:.5rem; }
+    .brand-center{ justify-self:center; font-weight:900; letter-spacing:.3px; font-size:1rem; }
+    .nav-actions{ justify-self:end; display:flex; align-items:center; gap:.4rem; }
+
+    .grid{ display:grid; gap:.8rem; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
+    .dc-card.card{ border-width:1px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,.25); }
+    .dc-card .card-header{ display:flex; align-items:center; justify-content:space-between; border:0; padding:.55rem .75rem .4rem; background:transparent; }
+    .dc-title{ font-size:1rem; font-weight:900; letter-spacing:.25px; text-transform:uppercase; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.45); }
+    .count-pill{ font-weight:800; font-size:.78rem; padding:.22rem .45rem; border-radius:999px; background:rgba(0,0,0,.25); color:#fff; border:1px solid rgba(255,255,255,.2); }
+
+    .state-ok{background:var(--ok-bg);border-color:var(--ok-bdr);}
+    .state-warn{background:var(--wr-bg);border-color:var(--wr-bdr);}
+    .state-crit{background:var(--cr-bg);border-color:var(--cr-bdr);}
+
+    .alert-list{display:flex;flex-direction:column;gap:.45rem;}
+    .alert-block{
+      background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.12);
+      border-radius:.5rem; padding:.45rem .6rem .5rem; cursor:pointer;
+      font-size:.9rem; line-height:1.25;
+    }
+    .alert-block *{min-width:0;}
+    .alert-block.suppressed{
+      background:var(--supp-bg); border-color:var(--supp-bdr);
+      border-left-width:3px; border-left-color:var(--supp-bdr);
+      box-shadow:inset 0 0 0 1px rgba(185,140,255,.18);
+    }
+
+    .alert-head{ display:grid; grid-template-columns:minmax(12rem,1fr) minmax(8.5rem,auto); gap:.45rem; align-items:center; }
+    .al-name{ min-width:0; font-weight:800; color:#fff; white-space:normal; overflow:hidden; text-overflow:ellipsis; word-break:keep-all; hyphens:none; font-size:.95rem; }
+    .al-meta{ min-width:0; max-width:52%; display:flex; flex-wrap:wrap; gap:.35rem; justify-content:flex-end; align-items:center; color:#d7e3f9; white-space:normal; overflow-wrap:anywhere; font-size:.82rem; line-height:1.15; }
+    .btn.btn-sm{ padding:.15rem .45rem; font-size:.74rem; border-radius:.42rem; }
+    .badge-suppressed,.btn-silence{white-space:nowrap;}
+    .al-status-active{color:#a7f3d0;font-weight:900;}
+    .al-status-firing{color:#ff9b9b;font-weight:900;}
+    .al-since{color:#dbeafe;font-weight:700;font-size:.8rem;}
+    .al-body{margin-top:.35rem;display:grid;gap:.32rem;}
+    .al-line{color:#f3f4f6;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-size:.86rem;}
+    .labels-hint{font-size:.7rem;color:#b8c7ff;opacity:.85;}
+    .al-labels{display:none;gap:.28rem;flex-wrap:wrap;}
+    .alert-block.open .al-labels{display:flex;}
+    .al-chip{background:#0b1228;border:1px solid rgba(255,255,255,.18);color:#cfe0ff;border-radius:999px;padding:.1rem .36rem;font-size:.72rem;max-width:100%;overflow-wrap:anywhere;}
+
+    .sticky-topper{position:sticky;top:0;z-index:10;padding:.5rem 0;background:linear-gradient(180deg, rgba(11,16,32,1) 0%, rgba(11,16,32,.86) 100%);}
+    .unassigned{background:var(--panel);border:1px dashed #2a335a;border-radius:.6rem;padding:.6rem .8rem;}
+
+    .source-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.14rem .4rem;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid #2a335a;margin-right:.3rem;white-space:normal;overflow-wrap:anywhere;font-size:.82rem;}
+    .dot{width:8px;height:8px;border-radius:50%}.dot.ok{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.24)}.dot.err{background:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.24)}
+
+    .grid > .dc-card,.dc-card .card-body,.alert-list,.alert-block,.al-name,.al-meta{min-width:0;}
+    .badge{font-size:.7rem;padding:.18rem .35rem;border-radius:.35rem;}
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-dark brand-nav">
+  <div class="brand-left">
+    <a href="/" class="d-inline-flex align-items-center">
+      <img src="{{ url_for('static', filename='Artboard-1_1.svg') }}" alt="Logo" class="brand-logo">
+    </a>
+  </div>
+  <div class="brand-center">Unified Grafana Alerts</div>
+  <div class="nav-actions">
+    <input id="search" class="form-control form-control-sm" placeholder="Search alerts..."/>
+    <div class="btn-group" role="group" aria-label="reports">
+      <button id="btn-daily" class="btn btn-sm btn-outline-info">Daily</button>
+      <button id="btn-weekly" class="btn btn-sm btn-outline-info">Weekly</button>
+      <button id="btn-monthly" class="btn btn-sm btn-outline-info">Monthly</button>
+    </div>
+    <button id="toggle-silenced" class="btn btn-sm btn-outline-light">Show silenced</button>
+    <button id="refresh" class="btn btn-sm btn-outline-light">Refresh now</button>
+  </div>
+</nav>
+
+<div class="container-fluid mt-3 pb-4">
+  <div class="sticky-topper d-flex justify-content-between align-items-center">
+    <div><span class="muted">SOURCES:</span> <span id="sources" class="ms-2"></span></div>
+    <div class="muted">LAST UPDATED: <span id="updated">—</span></div>
+  </div>
+
+  <div id="cards" class="grid mt-3"></div>
+
+  <div class="mt-4">
+    <h6 class="muted">UNASSIGNED (NO DC MATCH)</h6>
+    <div id="unassigned" class="unassigned"></div>
+  </div>
+</div>
+
+<!-- Silence / Edit modal -->
+<div class="modal fade" id="silenceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content" style="background:#111735;border:1px solid #2b3260;">
+      <div class="modal-header">
+        <h6 class="modal-title">Silence alert</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="small mb-2">
+          <div><strong id="mAlertName">—</strong></div>
+          <div class="text-muted">Source: <span id="mGrafana">—</span></div>
+        </div>
+
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="mMinimal" checked>
+          <label class="form-check-label small" for="mMinimal">
+            Use minimal matchers (alertname, grafana_folder, instance/job if present)
+          </label>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small">Start</label>
+          <input type="datetime-local" id="mStart" class="form-control form-control-sm"/>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">End</label>
+          <input type="datetime-local" id="mEnd" class="form-control form-control-sm"/>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Comment</label>
+          <input type="text" id="mComment" class="form-control form-control-sm" placeholder="Reason..."/>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Created by</label>
+          <input type="text" id="mBy" class="form-control form-control-sm" value="dc-alerts-ui"/>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small">Candidate labels</label>
+          <div id="mLabels" class="al-labels" style="display:flex"></div>
+          <div class="small text-info mt-1">Note: <code>__alert_rule_uid__</code> is always excluded.</div>
+        </div>
+
+        <!-- HIDDENS -->
+        <input type="hidden" id="mSilenceId"/>
+        <input type="hidden" id="mGrafanaValue"/>
+        <input type="hidden" id="mLabelsJson"/>
+        <input type="hidden" id="mMatchersJson"/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="mDeleteBtn" class="btn btn-sm btn-outline-warning me-auto" style="display:none">Unsilence</button>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="mSaveBtn" class="btn btn-sm btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report modal (unchanged UI pieces omitted for brevity) -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="background:#0f1531;border:1px solid #2b3260;">
+      <div class="modal-header">
+        <h6 class="modal-title">Report</h6>
+        <div class="d-flex gap-1">
+          <button class="kbtn" id="rep-prev">◀</button>
+          <button class="kbtn" id="rep-next">▶</button>
+          <input type="date" id="rep-day" class="form-control form-control-sm" style="width:auto;display:none"/>
+          <input type="month" id="rep-month" class="form-control form-control-sm" style="width:auto;display:none"/>
+        </div>
+        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="rep-meta" class="small text-info mb-2"></div>
+        <div id="rep-summary" class="table-responsive mb-3"></div>
+        <div id="rep-details"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ===== Config ===== */
+const DCs = {{ dc_list|tojson }};
+const AUTO_REFRESH_MS = 60000;
+
+/* ===== State ===== */
+const SHOW_SILENCED_KEY = 'dcAlertsShowSilenced';
+let SHOW_SILENCED = (localStorage.getItem(SHOW_SILENCED_KEY) || '0') === '1';
+let STORE = [];
+let modal, modalEl, reportModal;
+
+/* ===== Helpers ===== */
+function setToggleText(){ document.getElementById('toggle-silenced').textContent = SHOW_SILENCED ? 'Hide silenced' : 'Show silenced'; }
+function fmtSince(ts){ if (!ts) return '—'; const t=new Date(ts); const m=Math.floor((Date.now()-t.getTime())/60000); if(m<1)return'just now'; if(m<60)return`${m}m ago`; const h=Math.floor(m/60),rm=m%60; return `${h}h ${rm}m ago`; }
+function fmtDateLocalISO(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
+function toISOFromLocalInput(v){ if(!v)return null; const dt=new Date(v); return new Date(dt.getTime()-dt.getTimezoneOffset()*60000).toISOString(); }
+function sanitizeLabels(labels){ return Object.fromEntries(Object.entries(labels||{}).filter(([k])=>k!=='__alert_rule_uid__')); }
+function isSuppressed(a){ return (a?.silences && a.silences.length>0) || (a?.silencedBy && a.silencedBy.length>0); }
+function durationStr(sec){ sec=Math.max(0,parseInt(sec||0,10)); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; return `${h}h ${m}m ${s}s`; }
+
+/* ===== Render ===== */
+function renderLabels(labels){ const L=sanitizeLabels(labels); if(!L) return ''; return Object.entries(L).map(([k,v])=>`<span class="al-chip" data-k="${k}" title="${k}">${k}:${v}</span>`).join(''); }
+function renderSilenceBadges(a){ if (!a.silences || !a.silences.length) return ''; return a.silences.map(s=>{ const until=s.endsAt?new Date(s.endsAt).toLocaleString():'—'; const by=s.createdBy||'unknown'; return `<span class="badge badge-suppressed">suppressed until ${until} by ${by}</span>`; }).join(' '); }
+function keep(a){ STORE.push(a); return STORE.length-1; }
+function renderAlert(a){
+  const supp=isSuppressed(a);
+  const stCls = supp ? 'badge-suppressed' : ((a.status||'active').toLowerCase()==='firing'?'al-status-firing':'al-status-active');
+  const body=a.annotations?.message || a.annotations?.description || '';
+  const sum=a.annotations?.summary || '';
+  const src=a.sourceGrafana ? ` <span class="muted">@ ${a.sourceGrafana}</span>` : '';
+  const link=a.generatorURL ? ` <a class="linkish" href="${a.generatorURL}" target="_blank">open</a>` : '';
+  const idx=keep(a);
+  const btn=`<button class="btn btn-sm ${supp?'btn-outline-warning':'btn-outline-light'} btn-silence" data-idx="${idx}">${supp?'Edit silence':'Silence'}</button>`;
+  return `
+    <div class="alert-block ${supp?'suppressed':''}">
+      <div class="alert-head">
+        <div class="al-name">${a.alertname}${src}</div>
+        <div class="al-meta"><span class="${stCls}">${supp?'suppressed':(a.status||'active')}</span><span class="al-since">${fmtSince(a.startsAt)}</span>${link}${btn}</div>
+      </div>
+      <div class="al-body">
+        ${renderSilenceBadges(a)}
+        ${sum?`<div class="al-line"><strong>Summary:</strong> ${sum}</div>`:''}
+        ${body?`<div class="al-line"><strong>Body:</strong> ${body}</div>`:''}
+        <div class="labels-hint">Click alert to show labels</div>
+        <div class="al-labels">${renderLabels(a.labels)}</div>
+      </div>
+    </div>`;
+}
+function stateFromActiveCount(n){ if(n===0) return 'ok'; if(n<=2) return 'warn'; return 'crit'; }
+function renderList(list){ const emptyMsg = SHOW_SILENCED ? 'No alerts.' : 'No active alerts.'; if(!list||!list.length) return `<div class="muted">${emptyMsg}</div>`; return `<div class="alert-list">${list.map(renderAlert).join('')}</div>`; }
+function wireButtonsAndExpanders(){
+  document.querySelectorAll('.btn-silence').forEach(btn=>{ btn.onclick=(e)=>{ e.stopPropagation(); openSilenceModal(STORE[Number(btn.dataset.idx)]); };});
+  document.querySelectorAll('.alert-block').forEach(block=>{ block.addEventListener('click',(e)=>{ if(e.target.closest('button,a')) return; block.classList.toggle('open'); });});
+}
+
+function render(payload){
+  document.getElementById('updated').textContent = new Date(payload.generated_at).toLocaleString();
+  const sourcesHtml = (payload.sources||[]).map(s=>{
+    const cls = s.ok ? 'ok' : 'err'; const tip = s.ok ? 'connected' : 'error';
+    return `<span class="source-pill" title="${tip}"><span class="dot ${cls}"></span><a class="linkish" href="${s.base_url}" target="_blank">${s.name}</a></span>`;
+  }).join('');
+  document.getElementById('sources').innerHTML = sourcesHtml || '—';
+
+  const bydc = payload.by_dc || {};
+  const cards = document.getElementById('cards'); STORE=[]; cards.innerHTML='';
+  DCs.forEach(dc=>{
+    const listAll = bydc[dc] || [];
+    const nonSupp = listAll.filter(a=>!isSuppressed(a));
+    const list = SHOW_SILENCED ? listAll : nonSupp;
+    const state = stateFromActiveCount(nonSupp.length);
+    const card=document.createElement('div');
+    card.className=`card dc-card state-${state}`;
+    card.innerHTML=`<div class="card-header"><div class="dc-title">${dc}</div><span class="count-pill" title="Active alerts (not silenced)">${nonSupp.length}</span></div><div class="card-body">${renderList(list)}</div>`;
+    cards.appendChild(card);
+  });
+  const unAll = bydc['Unassigned']||[];
+  const unNonSupp = unAll.filter(a=>!isSuppressed(a));
+  document.getElementById('unassigned').innerHTML = renderList(SHOW_SILENCED?unAll:unNonSupp);
+  wireButtonsAndExpanders();
+}
+
+/* ===== Networking ===== */
+async function load(force=false){
+  const q=document.getElementById('search').value.trim();
+  const lastY=window.scrollY;
+  const url=new URL('/api/alerts', window.location.origin);
+  if(q) url.searchParams.set('q', q);
+  if(force) url.searchParams.set('force','1');
+  try{ const res=await fetch(url.toString(), {cache:'no-store'}); if(!res.ok) throw new Error('HTTP '+res.status); render(await res.json()); }
+  catch(err){ document.getElementById('cards').innerHTML = `<div class="text-danger">Failed to load alerts: ${err.message}</div>`; console.error('load() failed', err); }
+  window.scrollTo(0,lastY);
+}
+
+/* ===== Silence modal ===== */
+function openSilenceModal(alertObj){
+  if (!modal) { modalEl = document.getElementById('silenceModal'); modal = new bootstrap.Modal(modalEl); }
+  document.getElementById('mAlertName').textContent = alertObj.alertname || 'unknown';
+  document.getElementById('mGrafana').textContent = alertObj.sourceGrafana || '';
+  document.getElementById('mGrafanaValue').value = alertObj.sourceGrafana || alertObj.sourceBaseURL || '';
+
+  const safe = sanitizeLabels(alertObj.labels || {});
+  document.getElementById('mLabels').innerHTML = renderLabels(safe);
+  document.getElementById('mLabelsJson').value = JSON.stringify(safe);
+
+  document.getElementById('mComment').value = '';
+  document.getElementById('mBy').value = 'dc-alerts-ui';
+  document.getElementById('mMinimal').checked = true;
+
+  const now = new Date();
+  const end = new Date(now.getTime() + 2*60*60*1000);
+  document.getElementById('mStart').value = fmtDateLocalISO(now);
+  document.getElementById('mEnd').value = fmtDateLocalISO(end);
+
+  // preload existing silence (if any)
+  const firstSil = (alertObj.silences && alertObj.silences[0]) ? alertObj.silences[0] : null;
+  if (firstSil){
+    document.getElementById('mSilenceId').value = firstSil.id || '';
+    if (firstSil.startsAt) document.getElementById('mStart').value = fmtDateLocalISO(new Date(firstSil.startsAt));
+    if (firstSil.endsAt)   document.getElementById('mEnd').value   = fmtDateLocalISO(new Date(firstSil.endsAt));
+    document.getElementById('mComment').value = firstSil.comment || '';
+    document.getElementById('mBy').value = firstSil.createdBy || 'dc-alerts-ui';
+    document.getElementById('mMatchersJson').value = JSON.stringify(firstSil.matchers || []);
+    document.getElementById('mDeleteBtn').style.display = 'inline-block';
+  } else {
+    document.getElementById('mSilenceId').value = '';
+    document.getElementById('mMatchersJson').value = '[]';
+    document.getElementById('mDeleteBtn').style.display = 'none';
+  }
+  modal.show();
+}
+
+function buildMatchersFromLabels(labels, minimal=true){
+  const CLEAN_KEYS = new Set(['__alert_rule_uid__']);
+  const L = Object.fromEntries(Object.entries(labels||{}).filter(([k])=>!CLEAN_KEYS.has(k)));
+
+  if (!minimal) {
+    return Object.keys(L).map(name => ({name, value:String(L[name]), isRegex:false}));
+  }
+
+  const selected = [];
+  if ('alertname' in L)       selected.push('alertname');
+  if ('grafana_folder' in L)  selected.push('grafana_folder');
+  if ('instance' in L)        selected.push('instance');
+  if ('job' in L)             selected.push('job');
+
+  const keys = selected.length ? selected : (['alertname','grafana_folder'].filter(k=>k in L));
+  return keys.map(name => ({name, value:String(L[name]), isRegex:false}));
+}
+
+let saving = false;
+async function saveSilence(){
+  if (saving) return;
+  saving = true;
+  const btn = document.getElementById('mSaveBtn');
+  btn.disabled = true;
+  try{
+    const safeLabels = JSON.parse(document.getElementById('mLabelsJson').value||'{}');
+    const minimal = document.getElementById('mMinimal').checked;
+
+    // time sanity (avoid expired / inverted ranges)
+    let s = new Date(document.getElementById('mStart').value);
+    let e = new Date(document.getElementById('mEnd').value);
+    const now = new Date();
+    if (isNaN(s) || s < now) s = now;
+    if (isNaN(e) || e <= s) e = new Date(s.getTime() + 60*1000); // at least 1m
+    const startsAt = s.toISOString();
+    const endsAt   = e.toISOString();
+
+    const sid = document.getElementById('mSilenceId').value.trim();
+    const originalMatchers = JSON.parse(document.getElementById('mMatchersJson').value || '[]');
+
+    // keep original matchers when editing; otherwise build minimal from labels
+    const matchers = sid && originalMatchers.length
+      ? originalMatchers
+      : buildMatchersFromLabels(safeLabels, minimal);
+
+    const body = {
+      grafana: document.getElementById('mGrafanaValue').value,
+      matchers,
+      labels: safeLabels, // only for reference
+      startsAt, endsAt,
+      comment: document.getElementById('mComment').value,
+      createdBy: document.getElementById('mBy').value,
+    };
+    if (sid) body.id = sid;
+
+    const res = await fetch('/api/silence', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'unknown');
+
+    bootstrap.Modal.getInstance(document.getElementById('silenceModal'))?.hide();
+    await load(true);
+  }catch(err){
+    alert('Silence failed: ' + err.message);
+    console.error(err);
+  }finally{
+    saving = false; btn.disabled = false;
+  }
+}
+
+async function deleteSilence(){
+  const sid = document.getElementById('mSilenceId').value.trim();
+  const graf = document.getElementById('mGrafanaValue').value;
+  if (!sid) return;
+  try{
+    const res = await fetch('/api/unsilence', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ grafana: graf, id: sid }) });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'unknown');
+    bootstrap.Modal.getInstance(document.getElementById('silenceModal'))?.hide();
+    await load(true);
+  }catch(err){
+    alert('Unsilence failed: ' + err.message);
+  }
+}
+document.getElementById('mSaveBtn')?.addEventListener('click', saveSilence);
+document.getElementById('mDeleteBtn')?.addEventListener('click', deleteSilence);
+
+/* ===== Reports (unchanged behavior) ===== */
+let repPeriod='daily';
+let repCursor = new Date();
+function setPickerVisibility(){
+  document.getElementById('rep-day').style.display = (repPeriod==='daily' || repPeriod==='weekly') ? '' : 'none';
+  document.getElementById('rep-month').style.display = (repPeriod==='monthly') ? '' : 'none';
+  if(repPeriod==='monthly'){
+    const y = repCursor.getFullYear(), m = String(repCursor.getMonth()+1).padStart(2,'0');
+    document.getElementById('rep-month').value = `${y}-${m}`;
+  }else{
+    const y = repCursor.getFullYear(), m = String(repCursor.getMonth()+1).padStart(2,'0'), d=String(repCursor.getDate()).padStart(2,'0');
+    document.getElementById('rep-day').value = `${y}-${m}-${d}`;
+  }
+}
+async function fetchReport(){
+  let url = new URL(`/api/report/${repPeriod}`, window.location.origin);
+  if(repPeriod==='monthly'){
+    url.searchParams.set('y', repCursor.getFullYear());
+    url.searchParams.set('m', repCursor.getMonth()+1);
+  }else{
+    url.searchParams.set('y', repCursor.getFullYear());
+    url.searchParams.set('m', repCursor.getMonth()+1);
+    url.searchParams.set('d', repCursor.getDate());
+  }
+  const res = await fetch(url.toString(), {cache:'no-store'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+function renderReport(rep){
+  document.getElementById('rep-meta').textContent =
+    `${rep.period.toUpperCase()} | ${new Date(rep.start_utc).toLocaleString()} → ${new Date(rep.end_utc).toLocaleString()}`;
+  const sum = rep.summary||[];
+  const sumHtml = `
+    <table class="table table-sm table-dark table-striped align-middle report-table">
+      <thead><tr><th>DC</th><th>Fired (unique)</th><th>Suppressed (unique)</th><th>Snapshots</th></tr></thead>
+      <tbody>${sum.map(r=>`<tr><td>${r.dc}</td><td>${r.fired}</td><td>${r.suppressed}</td><td>${r.samples}</td></tr>`).join('')}</tbody>
+    </table>`;
+  document.getElementById('rep-summary').innerHTML = sumHtml;
+  const details = rep.details||{};
+  const dcs = Object.keys(details).sort();
+  const out=[];
+  dcs.forEach((dc,i)=>{
+    const rows = details[dc]||[];
+    const tbl = rows.length ? `
+      <div class="dc-scroll">
+        <table class="table table-sm table-dark table-hover align-middle report-table">
+          <thead><tr><th>Alert</th><th>Source</th><th>Status(es)</th><th>Start (local)</th><th>End (local)</th><th>Duration</th></tr></thead>
+          <tbody>${rows.map(a=>`<tr>
+              <td>${a.alertname}</td><td>${a.source||''}</td><td>${(a.statuses||[]).join(', ')}</td>
+              <td>${new Date(a.start_utc).toLocaleString()}</td><td>${new Date(a.end_utc).toLocaleString()}</td>
+              <td>${durationStr(a.duration_seconds)}</td></tr>`).join('')}
+          </tbody></table></div>` : `<div class="muted small">No alerts recorded.</div>`;
+    const cid = `dc-${i}`;
+    out.push(`<div class="report-dc-header collapse-toggle" data-bs-toggle="collapse" data-bs-target="#${cid}">
+        <div class="report-dc-title">${dc}</div><div class="report-dc-count">${rows.length} alerts</div>
+      </div><div id="${cid}" class="collapse show">${tbl}</div>`);
+  });
+  document.getElementById('rep-details').innerHTML = out.join('');
+}
+async function openReport(period){
+  repPeriod = period;
+  if(!reportModal) reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+  setPickerVisibility();
+  try{ renderReport(await fetchReport()); reportModal.show(); }catch(e){ alert('Failed to load report: '+e.message); }
+}
+
+/* ===== Events + boot ===== */
+document.getElementById('refresh').addEventListener('click', () => load(true));
+document.getElementById('search').addEventListener('input', ()=>{ clearTimeout(window._st); window._st=setTimeout(()=>load(false),250); });
+document.getElementById('toggle-silenced').addEventListener('click', ()=>{ SHOW_SILENCED=!SHOW_SILENCED; localStorage.setItem(SHOW_SILENCED_KEY, SHOW_SILENCED?'1':'0'); setToggleText(); load(false); });
+document.getElementById('btn-daily').addEventListener('click', ()=>openReport('daily'));
+document.getElementById('btn-weekly').addEventListener('click', ()=>openReport('weekly'));
+document.getElementById('btn-monthly').addEventListener('click', ()=>openReport('monthly'));
+document.getElementById('rep-prev').addEventListener('click', async ()=>{ if(repPeriod==='daily') repCursor.setDate(repCursor.getDate()-1); else if(repPeriod==='weekly') repCursor.setDate(repCursor.getDate()-7); else repCursor.setMonth(repCursor.getMonth()-1); setPickerVisibility(); try{ renderReport(await fetchReport()); }catch(e){ alert(e.message); }});
+document.getElementById('rep-next').addEventListener('click', async ()=>{ if(repPeriod==='daily') repCursor.setDate(repCursor.getDate()+1); else if(repPeriod==='weekly') repCursor.setDate(repCursor.getDate()+7); else repCursor.setMonth(repCursor.getMonth()+1); setPickerVisibility(); try{ renderReport(await fetchReport()); }catch(e){ alert(e.message); }});
+document.getElementById('rep-day').addEventListener('change', async (e)=>{ const d=new Date(e.target.value+'T00:00'); if(!isNaN(d)) repCursor=d; try{ renderReport(await fetchReport()); }catch(err){ alert(err.message); }});
+document.getElementById('rep-month').addEventListener('change', async (e)=>{ const [y,m]=e.target.value.split('-').map(Number); if(y&&m){ repCursor=new Date(y,m-1,1); } try{ renderReport(await fetchReport()); }catch(err){ alert(err.message); }});
+
+setToggleText();
+load(false);
+setInterval(()=>load(false), AUTO_REFRESH_MS);
+</script>
+</body>
+</html>
+
