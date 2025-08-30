@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  dc-alerts:
+    container_name: dc-alerts
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5050:5050"
+    env_file:
+      - .env
+    environment:
+      # Point SQLAlchemy/your db layer to a path inside the container
+      # (adjust if your app uses a different env var name)
+      DATABASE_URL: sqlite:////app/data/reports.db
+      # or if your db.py expects a bare path:
+      # DB_PATH: /app/data/reports.db
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5050/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - /db:/app/data
+
+volumes:
+  db:
+

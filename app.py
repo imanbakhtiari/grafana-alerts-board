@@ -23,28 +23,28 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 
 GRAFANAS = [
     {
-        "name": os.getenv("GRAFANA_NAME_MAIN", "Grafana-Main"),
+        "name": os.getenv("GRAFANA_NAME_MAIN", "Grafana1"),
         "base_url": os.getenv("GRAFANA_URL_MAIN", "https://grafana.domain.tld/"),
         "token": os.getenv("GRAFANA_TOKEN_MAIN", ""),
         "user": os.getenv("GRAFANA_USER_MAIN", "admin"),
         "password": os.getenv("GRAFANA_PASS_MAIN", "password"),
     },
     {
-        "name": os.getenv("GRAFANA_NAME_TBRZ", "Grafana-Shiraz"),
+        "name": os.getenv("GRAFANA_NAME_TBRZ", "Grafana2"),
         "base_url": os.getenv("GRAFANA_URL_TBRZ", "https://grafana2.domain.tld/"),
         "token": os.getenv("GRAFANA_TOKEN_TBRZ", ""),
         "user": os.getenv("GRAFANA_USER_TBRZ", "admin"),
         "password": os.getenv("GRAFANA_PASS_TBRZ", "password"),
     },
     {
-        "name": os.getenv("GRAFANA_NAME_SHZ", "Grafana-Fakhri"),
+        "name": os.getenv("GRAFANA_NAME_SHZ", "Grafana3"),
         "base_url": os.getenv("GRAFANA_URL_SHZ", "https://grafana3.domain.tld/"),
         "token": os.getenv("GRAFANA_TOKEN_SHZ", ""),
         "user": os.getenv("GRAFANA_USER_SHZ", "admin"),
         "password": os.getenv("GRAFANA_PASS_SHZ", "password"),
     },
     {
-        "name": os.getenv("GRAFANA_NAME_FN", "Grafana-Fanava"),
+        "name": os.getenv("GRAFANA_NAME_FN", "Grafana4"),
         "base_url": os.getenv("GRAFANA_URL_FN", "https://grafana4.domain.tld/"),
         "token": os.getenv("GRAFANA_TOKEN_FN", ""),
         "user": os.getenv("GRAFANA_USER_FN", "admin"),
